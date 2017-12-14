@@ -81,9 +81,10 @@ def parse_xpaths(html, key, dates, xpaths):
             value = collapse_spaces(html.find(xpath).text_content())
             if key in dates:
                 value = iso_date(value)
-            data[key] = value
-            # Takes the value from the first xpath in the list that is present.
-            return data
+            if value is not None and value is not '':
+                data[key] = value
+                # Takes the value from the first xpath in the list that is present.
+                return data
     return None
 
 
