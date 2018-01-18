@@ -1,7 +1,8 @@
 import json
 import requests
+from pprint import pprint  # noqa
 from banal import clean_dict
-from urlparse import urljoin
+from six.moves.urllib.parse import urljoin
 
 from memorious import settings
 
@@ -32,34 +33,32 @@ def submit_result(context, result, data):
     if collection_id is None:
         return
 
-    parent = None
-    parent_fid = data.get('parent_foreign_id')
-    if parent_fid is not None:
-        parent = { 'foreign_id': parent_fid }
-
     meta = {
         'crawler': context.crawler.name,
         'source_url': data.get('source_url', result.url),
         'title': data.get('title'),
         'author': data.get('author'),
         'foreign_id': data.get('foreign_id', result.request_id),
-        'parent': parent,
         'mime_type': data.get('mime_type', result.content_type),
         'countries': data.get('countries'),
         'languages': data.get('languages'),
         'retrieved_at': data.get('retrieved_at', result.retrieved_at),
         'modified_at': data.get('modified_at', result.last_modified),
-        'author': data.get('author'),
         'published_at': data.get('published_at'),
         'headers': dict(result.headers or {})
     }
+    if data.get('parent_foreign_id'):
+        meta['parent'] = {'foreign_id': data.get('parent_foreign_id')}
+    if result.file_name:
+        meta['file_name'] = result.file_name
+
     meta = clean_dict(meta)
+    # pprint(meta)
+
     url = make_url('collections/%s/ingest' % collection_id)
     title = meta.get('title', meta.get('file_name', meta.get('source_url')))
     context.log.info("Sending '%s' to %s", title, url)
-    file = (result.file_name or '',
-            open(result.file_path, 'rb'),
-            result.content_type)
+    file = open(result.file_path, 'rb')
     res = session.post(url,
                        data={'meta': json.dumps(meta)},
                        files={'file': file})
@@ -72,34 +71,28 @@ def submit_result(context, result, data):
 
 def get_collection_id(context, session):
     url = make_url('collections')
+    if hasattr(context.stage, '_aleph_cid'):
+        return context.stage._aleph_cid
     foreign_id = context.get('collection', context.crawler.name)
-    while True:
-        res = session.get(url, params={
-            'limit': 100,
-            'filter:foreign_id': foreign_id
-        })
-        data = res.json()
-        for coll in data.get('results'):
-            if coll.get('foreign_id') == foreign_id:
-                return coll.get('id')
-        if not data.get('next_url'):
-            break
-        url = urljoin(url, data.get('next_url'))
+    res = session.get(url, params={
+        'filter:foreign_id': foreign_id
+    })
+    data = res.json()
+    for coll in data.get('results'):
+        if coll.get('foreign_id') == foreign_id:
+            context.stage._aleph_cid = coll.get('id')
+            return context.stage._aleph_cid
 
-    url = make_url('collections')
     res = session.post(url, json={
         'label': context.crawler.description,
         'category': context.crawler.category,
         'managed': True,
         'foreign_id': foreign_id
     })
-    coll_id = res.json().get('id')
-    if coll_id is None:
-        message = res.json().get('message')
-        context.log.error("Could not get collection: %s", message)
-    return coll_id
+    context.stage._aleph_cid = res.json().get('id')
+    return context.stage._aleph_cid
 
 
 def make_url(path):
-    prefix = urljoin(settings.ALEPH_HOST, '/api/')
-    return urljoin(prefix, '%s/%s' % (settings.ALEPH_API_VERSION, path))
+    prefix = urljoin(settings.ALEPH_HOST, '/api/2/')
+    return urljoin(prefix, path)

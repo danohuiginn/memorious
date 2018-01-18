@@ -1,5 +1,4 @@
-from urlparse import urljoin
-from datetime import datetime
+from six.moves.urllib.parse import urljoin
 from requests.exceptions import ConnectionError
 
 from memorious.helpers.rule import Rule
@@ -19,9 +18,8 @@ def fetch(context, data):
             return
 
         if not result.ok:
-            context.emit_warning("Fetch fail [%s]: %s",
-                                 result.status_code,
-                                 result.url)
+            err = (result.status_code, result.url)
+            context.emit_warning("Fetch fail [%s]: %s" % (err))
             return
 
         context.log.info("Fetched [%s]: %r",
@@ -65,8 +63,8 @@ def dav_index(context, data):
             context.log.info("Fetching contents of folder: %s" % rurl)
             context.recurse(data=rdata)
         else:
-            rdata['parent_foreign_id'] = url    
-        
+            rdata['parent_foreign_id'] = url
+
         # Do GET requests on the urls
         fetch(context, rdata)
 
