@@ -53,7 +53,6 @@ def submit_result(context, result, data):
         meta['file_name'] = result.file_name
 
     meta = clean_dict(meta)
-    # pprint(meta)
 
     url = make_url('collections/%s/ingest' % collection_id)
     title = meta.get('title', meta.get('file_name', meta.get('source_url')))
@@ -73,7 +72,8 @@ def get_collection_id(context, session):
     url = make_url('collections')
     if hasattr(context.stage, '_aleph_cid'):
         return context.stage._aleph_cid
-    foreign_id = context.get('collection', context.crawler.name)
+    foreign_id = context.get('collection', data.get(
+        'collection', context.crawler.name))
     res = session.get(url, params={
         'filter:foreign_id': foreign_id
     })
