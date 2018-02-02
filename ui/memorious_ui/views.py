@@ -1,13 +1,31 @@
 from urllib import urlencode
+import logging
+
 from flask import Flask, jsonify, request
 from flask import render_template, abort
 from babel.numbers import format_number
 from babel.dates import format_date, format_datetime
+from raven.contrib.flask import Sentry
 
+from memorious import settings
+from memorious.core import session
 from memorious_ui.reporting import crawlers_index, global_stats
 from memorious_ui.reporting import get_crawler, crawler_stages, crawler_events
 
 app = Flask(__name__)
+sentry = Sentry()
+
+if settings.SENTRY_DSN:
+    sentry.init_app(app,
+                    dsn=settings.SENTRY_DSN,
+                    logging=True,
+                    level=logging.ERROR)
+
+
+@app.after_request
+def cleanup(response):
+    session.remove()
+    return response
 
 
 @app.template_filter('number')
@@ -49,8 +67,7 @@ def context():
 @app.route('/')
 def index():
     crawlers = crawlers_index()
-    return render_template('index.html',
-                           crawlers=crawlers)
+    return render_template('index.html', crawlers=crawlers)
 
 
 @app.route('/crawlers/<name>')
@@ -84,8 +101,7 @@ def config(name):
     crawler = get_crawler(name)
     if crawler is None:
         abort(404)
-    return render_template('config.html',
-                           crawler=crawler)
+    return render_template('config.html', crawler=crawler)
 
 
 @app.route('/invoke/<crawler>/<action>', methods=['POST'])

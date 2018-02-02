@@ -26,19 +26,20 @@ setup(
         'click',
         'lxml >= 3',
         'PyYAML >= 3.10',
-        'normality >= 0.5.1',
+        'normality >= 0.5.7',
         'celery',
         'tabulate',
         'sqlalchemy',
         'dataset >= 1.0.3',
         'six',
-        'storagelayer >= 0.2.0',
+        'storagelayer >= 0.3.2',
         'urlnormalizer >= 1.0.4',
         'werkzeug',
         'pycountry',
         'countrynames',
         'dateparser',
-        'stringcase'
+        'stringcase',
+        'raven',
     ],
     entry_points={
         'console_scripts': [

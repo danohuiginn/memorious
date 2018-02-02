@@ -1,4 +1,5 @@
 import os
+import io
 import yaml
 import logging
 import time
@@ -24,7 +25,7 @@ class Crawler(object):
     def __init__(self, manager, source_file):
         self.manager = manager
         self.source_file = source_file
-        with open(source_file) as fh:
+        with io.open(source_file, encoding='utf-8') as fh:
             self.config_yaml = fh.read()
             self.config = yaml.load(self.config_yaml)
 
@@ -54,7 +55,7 @@ class Crawler(object):
         last_run = Operation.last_run(self.name)
         if last_run is None:
             return True
-        now = datetime.now()
+        now = datetime.utcnow()
         if now > last_run + self.delta:
             return True
         return False
